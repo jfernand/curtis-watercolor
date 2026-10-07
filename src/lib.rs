@@ -55,3 +55,10 @@ pub use paper::Paper;
 pub use pigment::{Layer, PALETTE, Pigment, by_name};
 pub use render::{composite, to_srgb8};
 pub use sim::{Glaze, Params};
+
+/// The crate version, for caches keyed on the simulator's behaviour.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
