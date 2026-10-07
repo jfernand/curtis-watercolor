@@ -1,0 +1,18 @@
+[package]
+name = "curtis-watercolor"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Physically based watercolor simulation and Kubelka–Munk glazing, after Curtis et al., Computer-Generated Watercolor (SIGGRAPH 1997)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jfernand/curtis-watercolor"
+readme = "README.md"
+keywords = ["watercolor", "painting", "simulation", "kubelka-munk", "npr"]
+categories = ["graphics", "simulation", "rendering"]
+include = ["src/**", "shaders/**", "examples/**", "README.md", "LICENSE-*"]
+
+[dependencies]
+libm = "0.2"
+
+[dev-dependencies]
+png = "0.18"
