@@ -26,6 +26,7 @@ pub struct Rng {
 }
 
 impl Rng {
+    /// A generator seeded with `seed`; equal seeds give equal sequences.
     pub fn new(seed: u64) -> Self {
         let mut s = seed;
         let init = splitmix64(&mut s);
@@ -37,6 +38,7 @@ impl Rng {
         rng
     }
 
+    /// The next uniformly distributed 32-bit value.
     pub fn next_u32(&mut self) -> u32 {
         let old = self.state;
         self.state = old.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(self.inc);
@@ -49,7 +51,11 @@ impl Rng {
         self.next_u32() as f32 / u32::MAX as f32
     }
 
-    /// Uniform integer in `0..n` without modulo bias (Lemire's method). `n` must be positive.
+    /// Uniform integer in `0..n` without modulo bias (Lemire's method).
+    ///
+    /// # Panics
+    ///
+    /// If `n` is zero.
     pub fn below(&mut self, n: u32) -> u32 {
         assert!(n > 0);
         let threshold = n.wrapping_neg() % n;

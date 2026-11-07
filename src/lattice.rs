@@ -8,8 +8,10 @@
 //! agrees with the paper drawn under it at runtime, wherever the cell sits, and the paper is
 //! seamless across cells.
 
+/// A point or displacement in the plane, `[x, y]`.
 pub type Point = [f32; 2];
 
+/// Two basis vectors mapping one period of the paper onto the plane.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Lattice {
     /// The plane displacement of one period along the paper's first axis.
@@ -19,6 +21,11 @@ pub struct Lattice {
 }
 
 impl Lattice {
+    /// The lattice with basis `a` and `b`.
+    ///
+    /// # Panics
+    ///
+    /// If `a` and `b` are parallel.
     pub fn new(a: Point, b: Point) -> Self {
         let det = a[0] * b[1] - a[1] * b[0];
         assert!(det.abs() > 1e-9, "lattice basis vectors must not be parallel");

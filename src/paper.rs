@@ -7,11 +7,17 @@
 use crate::lattice::{Lattice, Point};
 use crate::rng::Rng;
 
+/// A sheet of paper: one period of a height field, repeating across the plane on a [`Lattice`].
+///
+/// Read heights with [`Paper::at`] (plane coordinates) or [`Paper::at_lattice`]. The same `n`,
+/// `seed` and lattice always give the same paper.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Paper {
     /// Texels per period, in each lattice direction.
     pub n: usize,
-    /// Heights in `[0, 1]`, row-major in lattice coordinates.
+    /// Heights in `[0, 1]`, row-major in lattice coordinates: `h[y * n + x]`.
     pub h: Vec<f32>,
+    /// How the period repeats across the plane.
     pub lattice: Lattice,
 }
 
@@ -52,6 +58,10 @@ impl Paper {
     }
 
     /// Paper from your own height field (`n` × `n`, values in `[0, 1]`, wrapping at the edges).
+    ///
+    /// # Panics
+    ///
+    /// If `h` does not hold `n * n` heights.
     pub fn from_heights(n: usize, h: Vec<f32>, lattice: Lattice) -> Self {
         assert_eq!(h.len(), n * n);
         Self { n, h, lattice }

@@ -10,20 +10,27 @@
 
 use crate::pigment::Pigment;
 
-#[derive(Clone, Copy, Debug)]
+/// The simulation's constants (Curtis et al. §4). [`Params::default`] is the paper's choice; the
+/// `parameters` example paints a strip of swatches for each.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Params {
-    /// μ: viscosity.
+    /// μ: viscosity. Higher values smooth the flow. The step is explicit, so keep it below about
+    /// 0.25: much above that the water goes unstable and leaves ring-shaped artefacts.
     pub viscosity: f32,
-    /// κ: viscous drag.
+    /// κ: viscous drag. Higher values stop the water sooner, leaving the pigment where it was
+    /// loaded and pooled.
     pub drag: f32,
-    /// η: strength of the outward flow that darkens edges.
+    /// η: strength of the outward flow that darkens edges. 0 gives no dark rim; the paper uses
+    /// 0.01–0.05.
     pub edge_darkening: f32,
-    /// K: Gaussian kernel size, in cells, for the distance to the mask edge.
+    /// K: Gaussian kernel size, in cells, for the distance to the mask edge: how wide the band
+    /// that drains toward the rim is.
     pub blur: usize,
-    /// How hard the paper slope pushes the water.
+    /// How hard the paper's slope pushes the water from its peaks into its valleys.
     pub slope: f32,
+    /// N: most relaxation passes per step when making the flow divergence-free.
     pub relax_iterations: usize,
-    /// τ: divergence tolerance.
+    /// τ: divergence tolerance; relaxation stops early once every correction is below it.
     pub relax_tolerance: f32,
     /// ξ: relaxation rate.
     pub relax_rate: f32,
@@ -50,18 +57,28 @@ impl Default for Params {
     }
 }
 
+/// One wash of one pigment on an `n` × `n` grid: the water's velocity and pressure and the
+/// pigment suspended in it and deposited on the paper.
+///
+/// The wet area, the paper and the parameters are fixed when the glaze is made (the edge
+/// weights and the set of wet cells are derived from them). The state, [`u`](Glaze::u),
+/// [`v`](Glaze::v), [`p`](Glaze::p), [`g`](Glaze::g) and [`d`](Glaze::d), is public: set it to
+/// shape a stroke (an uneven load, a push of water) before or between steps. Keep it zero outside
+/// the wet area.
+#[derive(Clone, Debug)]
 pub struct Glaze {
-    pub n: usize,
-    pub params: Params,
-    pub pigment: Pigment,
+    n: usize,
+    params: Params,
+    pigment: Pigment,
     /// Wet-area mask M.
-    pub mask: Vec<bool>,
+    mask: Vec<bool>,
     /// Paper height h in `[0, 1]`.
-    pub height: Vec<f32>,
+    height: Vec<f32>,
     /// x velocity on vertical faces: `u[j * (n + 1) + f]`, face `f` between cells `f − 1` and `f`.
     pub u: Vec<f32>,
     /// y velocity on horizontal faces: `v[f * n + i]`, face `f` between rows `f − 1` and `f`.
     pub v: Vec<f32>,
+    /// Water pressure, per cell: raise it to push water outward from a cell.
     pub p: Vec<f32>,
     /// Pigment suspended in the water.
     pub g: Vec<f32>,
@@ -83,8 +100,16 @@ pub struct Glaze {
 }
 
 impl Glaze {
+    /// A still, empty wash over the cells where `mask` is true, on paper of the given `height`
+    /// (both `n` × `n`, row-major). Load it with [`Glaze::load_pigment`] or by writing
+    /// [`Glaze::g`].
+    ///
+    /// # Panics
+    ///
+    /// If `mask` or `height` does not hold `n * n` values.
     pub fn new(n: usize, params: Params, pigment: Pigment, mask: Vec<bool>, height: Vec<f32>) -> Self {
-        assert_eq!(mask.len(), n * n);
+        assert_eq!(mask.len(), n * n, "mask must be n × n");
+        assert_eq!(height.len(), n * n, "height must be n × n");
         let edge = edge_weight(n, &mask, params.blur);
         let wet_at = |i: isize, j: isize| {
             i >= 0 && j >= 0 && i < n as isize && j < n as isize && mask[j as usize * n + i as usize]
@@ -130,6 +155,31 @@ impl Glaze {
         }
     }
 
+    /// Cells per side.
+    pub fn n(&self) -> usize {
+        self.n
+    }
+
+    /// The parameters the glaze was made with.
+    pub fn params(&self) -> &Params {
+        &self.params
+    }
+
+    /// The pigment being washed.
+    pub fn pigment(&self) -> &Pigment {
+        &self.pigment
+    }
+
+    /// The wet-area mask M: true where the paper is wet.
+    pub fn mask(&self) -> &[bool] {
+        &self.mask
+    }
+
+    /// The paper height under each cell, in `[0, 1]`.
+    pub fn height(&self) -> &[f32] {
+        &self.height
+    }
+
     /// The wet cells, in index order.
     pub fn wet_cells(&self) -> &[usize] {
         &self.wet
@@ -162,7 +212,8 @@ impl Glaze {
         self.transfer_pigment();
     }
 
-    /// Adds a velocity field (laid out like `u` and `v`) to the open faces.
+    /// Adds a velocity field (laid out like [`Glaze::u`] and [`Glaze::v`]) to the faces between wet
+    /// cells; the rest is ignored, since water cannot cross into dry paper.
     pub fn add_velocity(&mut self, du: &[f32], dv: &[f32]) {
         for &f in &self.open_u {
             self.u[f] += du[f];
@@ -394,7 +445,7 @@ mod tests {
         let h = (0..n * n).map(|k| height(k % n, k / n)).collect();
         let mut g = Glaze::new(n, Params::default(), by_name(pigment).unwrap(), mask, h);
         for k in 0..n * n {
-            if g.mask[k] {
+            if g.mask()[k] {
                 g.g[k] = 0.4;
             }
         }
@@ -449,8 +500,8 @@ mod tests {
         }
         let (mut valley, mut peak) = (0.0, 0.0);
         for k in 0..n * n {
-            if g.mask[k] {
-                if g.height[k] < 0.5 { valley += g.d[k] } else { peak += g.d[k] }
+            if g.mask()[k] {
+                if g.height()[k] < 0.5 { valley += g.d[k] } else { peak += g.d[k] }
             }
         }
         assert!(valley > peak * 1.2, "valleys {valley} vs peaks {peak}");

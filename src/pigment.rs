@@ -9,8 +9,11 @@
 /// physical properties that drive the simulation.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pigment {
+    /// A name, for palettes and debugging.
     pub name: &'static str,
+    /// Absorption per unit thickness, per linear RGB channel.
     pub k: [f32; 3],
+    /// Scattering per unit thickness, per linear RGB channel.
     pub s: [f32; 3],
     /// ρ: heavier pigments settle sooner.
     pub density: f32,
@@ -55,7 +58,9 @@ pub fn by_name(name: &str) -> Option<Pigment> {
 /// Reflectance and transmittance of a layer, per channel.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Layer {
+    /// Reflectance: the fraction of light the layer sends back, per channel.
     pub r: [f32; 3],
+    /// Transmittance: the fraction of light that passes through, per channel.
     pub t: [f32; 3],
 }
 
@@ -82,6 +87,10 @@ impl Pigment {
     /// (linear RGB reflectances, `0 < over_black < over_white < 1` per channel), by inverting the
     /// KM equations as in §5.1. Opaque paints look alike on both; transparent ones are dark on
     /// black; interference paints are pale on white and coloured on black.
+    ///
+    /// # Panics
+    ///
+    /// If a channel does not satisfy `0 < over_black < over_white < 1`.
     pub fn from_colours(
         name: &'static str,
         over_white: [f32; 3],

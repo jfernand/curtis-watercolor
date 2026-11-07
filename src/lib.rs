@@ -19,6 +19,8 @@
 //! thicknesses and colours. Use it offline to bake textures, or in a tool to paint images. The
 //! same compositing is available for shaders in `shaders/kubelka_munk.wgsl`.
 //!
+//! The `swatches` and `parameters` examples paint the palette and the effect of each parameter.
+//!
 //! The paper's capillary layer (backruns, §4.6) is not implemented.
 //!
 //! ```
@@ -42,6 +44,8 @@
 //! let centre = composite([0.96, 0.94, 0.89], &[(&rose, thickness[32 * n + 32])]);
 //! assert!(centre[0] > centre[1]);
 //! ```
+
+#![warn(missing_docs)]
 
 pub mod lattice;
 pub mod paper;
