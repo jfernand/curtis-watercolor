@@ -19,7 +19,9 @@ fn main() -> std::io::Result<()> {
 
     let (cols, rows) = (7, pigments.len().div_ceil(7));
     let (w, h) = (cols * SIDE, rows * SIDE);
-    let background = PAPER.map(to_srgb8);
+    // The paper's average tone, so the gaps match the paper around each swatch.
+    let mean = paper.h.iter().sum::<f32>() / paper.h.len() as f32;
+    let background = PAPER.map(|v| to_srgb8(v * (0.93 + 0.07 * mean)));
     let mut image: Vec<u8> = (0..w * h).flat_map(|_| [background[0], background[1], background[2], 255]).collect();
     for (k, s) in swatches.iter().enumerate() {
         let (x0, y0) = ((k % cols) * SIDE, (k / cols) * SIDE);
